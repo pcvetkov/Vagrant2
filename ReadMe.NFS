@@ -1,0 +1,209 @@
+1. Ставим пакет на сервер  nfss
+ yum install nfs-utils -y
+ 
+2. Включаем  firewall
+
+systemctl enable firewalld --now 
+Created symlink from /etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service to /usr/lib/systemd/system/firewalld.service.
+Created symlink from /etc/systemd/system/multi-user.target.wants/firewalld.service to /usr/lib/systemd/system/firewalld.service.
+
+3.  Прописываем  NFS в firewall  на клиенте и на сервере.
+
+firewall-cmd --add-service="nfs3" \
+--add-service="rpc-bind" \
+--add-service="mountd" \
+--permanent 
+
+firewall-cmd --reload
+success
+
+[root@localhost ~]# firewall-cmd --list-all
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: eth0 eth1
+  sources: 
+  services: ssh dhcpv6-client nfs3 rpc-bind mountd
+  ports: 
+  
+
+
+  4. Включаем NFS
+  
+   
+  systemctl enable nfs --now
+Created symlink from /etc/systemd/system/multi-user.target.wants/nfs-server.service to /usr/lib/systemd/system/nfs-server.service.
+
+ Проверим порты
+ 
+ ss -tnplu | grep rpc
+udp    UNCONN     0      0      127.0.0.1:837                   *:*                   users:(("rpc.statd",pid=2357,fd=5))
+udp    UNCONN     0      0         *:20048                 *:*                   users:(("rpc.mountd",pid=2367,fd=7))
+udp    UNCONN     0      0         *:48234                 *:*                   users:(("rpc.statd",pid=2357,fd=8))
+udp    UNCONN     0      0         *:111                   *:*                   users:(("rpcbind",pid=561,fd=6))
+udp    UNCONN     0      0         *:726                   *:*                   users:(("rpcbind",pid=561,fd=7))
+udp    UNCONN     0      0        :::20048                :::*                   users:(("rpc.mountd",pid=2367,fd=9))
+udp    UNCONN     0      0        :::111                  :::*                   users:(("rpcbind",pid=561,fd=9))
+udp    UNCONN     0      0        :::41840                :::*                   users:(("rpc.statd",pid=2357,fd=10))
+udp    UNCONN     0      0        :::726                  :::*                   users:(("rpcbind",pid=561,fd=10))
+tcp    LISTEN     0      128       *:111                   *:*                   users:(("rpcbind",pid=561,fd=8))
+tcp    LISTEN     0      128       *:20048                 *:*                   users:(("rpc.mountd",pid=2367,fd=8))
+tcp    LISTEN     0      128       *:36375                 *:*                   users:(("rpc.statd",pid=2357,fd=9))
+tcp    LISTEN     0      128      :::111                  :::*                   users:(("rpcbind",pid=561,fd=11))
+tcp    LISTEN     0      128      :::20048                :::*                   users:(("rpc.mountd",pid=2367,fd=10))
+tcp    LISTEN     0      128      :::49137                :::*                   users:(("rpc.statd",pid=2357,fd=11))
+
+
+
+5. Создаем  ресурсы для экспорта по  NFS
+
+
+mkdir -p /srv/share/upload 
+chown -R nfsnobody:nfsnobody /srv/share 
+chmod 0777 /srv/share/upload 
+
+
+6. Экспортируем 
+
+[root@localhost ~]# cat << EOF > /etc/exports 
+> /srv/share 192.168.50.11/32(rw,sync,root_squash) 
+> EOF
+[root@localhost ~]# exportfs -r
+[root@localhost ~]# exportfs -s
+/srv/share  192.168.50.11/32(sync,wdelay,hide,no_subtree_check,sec=sys,rw,secure,root_squash,no_all_squash)
+
+
+
+7. Ставим дополнительные пакеты на клиент и на сервер. Устанавливаем имена хостов.
+
+[root@localhost network-scripts]# yum install net-tools
+Loaded plugins: fastestmirror
+Loading mirror speeds from cached hostfile
+ * base: mirror.corbina.net
+ * extras: mirror.corbina.net
+ * updates: mirror.docker.ru
+Resolving Dependencies
+--> Running transaction check
+---> Package net-tools.x86_64 0:2.0-0.25.20131004git.el7 will be installed
+--> Finished Dependency Resolution
+
+Dependencies Resolved
+
+================================================================================
+ Package         Arch         Version                          Repository  Size
+================================================================================
+Installing:
+ net-tools       x86_64       2.0-0.25.20131004git.el7         base       306 k
+
+Transaction Summary
+================================================================================
+Install  1 Package
+
+Total download size: 306 k
+Installed size: 917 k
+Is this ok [y/d/N]: y
+Downloading packages:
+net-tools-2.0-0.25.20131004git.el7.x86_64.rpm              | 306 kB   00:00     
+Running transaction check
+Running transaction test
+Transaction test succeeded
+Running transaction
+  Installing : net-tools-2.0-0.25.20131004git.el7.x86_64                    1/1 
+  Verifying  : net-tools-2.0-0.25.20131004git.el7.x86_64                    1/1 
+
+Installed:
+  net-tools.x86_64 0:2.0-0.25.20131004git.el7                                   
+
+Complete!
+
+
+
+echo nfss > /etc/hostname
+
+echo nfsc > /etc/hostname
+
+
+8. Настраиваем второй интерфейс  eth1  с адресами 192.168.50.10 и  192.168.50.11 для
+
+ сервера и клиента  и перегружаем хосты
+ 
+ 
+9.  Теперь   прописываем в  /etc/fstab  на клиенте
+
+[root@nfsc ~]# echo "192.168.56.10:/srv/share/ /mnt nfs vers=3,proto=udp,noauto,x-systemd.automount 0 0" >> /etc/fstab
+[root@nfsc ~]# cat /etc/fstab 
+
+#
+# /etc/fstab
+# Created by anaconda on Sat May 12 18:50:26 2018
+#
+# Accessible filesystems, by reference, are maintained under '/dev/disk'
+# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+#
+/dev/mapper/VolGroup00-LogVol00 /                       xfs     defaults        0 0
+UUID=570897ca-e759-4c81-90cf-389da6eee4cc /boot                   xfs     defaults        0 0
+/dev/mapper/VolGroup00-LogVol01 swap                    swap    defaults        0 0
+192.168.56.10:/srv/share/ /mnt nfs vers=3,proto=udp,noauto,x-systemd.automount 0 0
+
+root@nfsc etc]# cat /etc/fstab
+
+#
+# /etc/fstab
+# Created by anaconda on Sat May 12 18:50:26 2018
+#
+# Accessible filesystems, by reference, are maintained under '/dev/disk'
+# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+#
+/dev/mapper/VolGroup00-LogVol00 /                       xfs     defaults        0 0
+UUID=570897ca-e759-4c81-90cf-389da6eee4cc /boot                   xfs     defaults        0 0
+/dev/mapper/VolGroup00-LogVol01 swap                    swap    defaults        0 0
+192.168.56.10:/srv/share/ /mnt nfs vers=3,proto=udp,noauto,x-systemd.automount 0 0
+[root@nfsc etc]# mount /mnt
+mount.nfs: Connection timed out
+[root@nfsc etc]# systemctl daemon-reload
+[root@nfsc etc]# systemctl  restart remote-fs.target
+[root@nfsc etc]# cd /mnt
+[root@nfsc mnt]# df -h
+Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/VolGroup00-LogVol00   38G 1016M   37G   3% /
+devtmpfs                         109M     0  109M   0% /dev
+tmpfs                            118M     0  118M   0% /dev/shm
+tmpfs                            118M  4.6M  114M   4% /run
+tmpfs                            118M     0  118M   0% /sys/fs/cgroup
+nfss:/srv/share                   38G 1015M   37G   3% /mnt
+/dev/sda2                       1014M   63M  952M   7% /boot
+tmpfs                             24M     0   24M   0% /run/user/1000
+
+
+
+
+root@nfsc mnt]# mount | grep mnt
+systemd-1 on /mnt type autofs (rw,relatime,fd=34,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=11614)
+nfss:/srv/share on /mnt type nfs4 (rw,relatime,vers=4.1,rsize=32768,wsize=32768,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.168.50.11,local_lock=none,addr=192.168.50.10)
+
+
+
+10. Создаем проверочные файлы с клиента и с сервера
+
+[root@nfss upload]# touch check_file
+[root@nfss upload]# ls -la
+total 0
+drwxrwxrwx. 2 nfsnobody nfsnobody 43 Feb 18 15:49 .
+drwxr-xr-x. 3 nfsnobody nfsnobody 20 Feb 12 09:04 ..
+-rw-r--r--. 1 root      root       0 Feb 18 15:47 check_file
+-rw-r--r--. 1 nfsnobody nfsnobody  0 Feb 18 15:49 client_file
+
+
+
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+
+
