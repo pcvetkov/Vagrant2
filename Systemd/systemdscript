@@ -1,0 +1,71 @@
+#!/bin/bash
+# rm files if any
+rm -f /etc/systemd/system/watchlog* 2 >/dev/null
+
+cat <<EOF > /etc/sysconfig/watchlog
+# Configuration file for my watchlog  service
+# Place it to /etc/sysconfig
+WORD="ALERT"
+LOG=/var/log/watchlog.log
+EOF
+
+#Create  script to find alerts
+cat << EOF > /opt/watchlog.sh
+#!/bin/bash
+WORD=\$1
+LOG=\$2
+DATE=\`date\`
+
+if grep \$WORD \$LOG &> /dev/null
+then
+logger "\$DATE: I found word, Master!"
+else
+exit 0
+fi
+EOF
+
+
+# Set up permission +x
+chmod +x /opt/watchlog.sh
+
+#Create log file with some messages
+cat << EOF > /var/log/watchlog.log
+Everything is good ...
+Everything is good ....
+good ...
+good ..
+Achtung!
+ALERT
+Vsem kapec.
+EOF
+
+# Create watchlog service
+cat << EOF > /etc/systemd/system/watchlog.service
+[Unit]
+Description=My watchlog timer service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/sysconfig/watchlog
+ExecStart=/opt/watchlog.sh \$WORD \$LOG
+
+EOF
+
+cat << EOF > /etc/systemd/system/watchlog.timer
+[Unit]
+Description=Run watchlog script every 30 second
+
+[Timer]
+# Run every 30 second
+OnUnitActiveSec=30
+Unit=watchlog.service
+
+[Install]
+WantedBy=multi-user.target
+
+EOF
+
+systemctl daemon-reload
+systemctl enable watchlog.timer
+systemctl start watchlog.timer
+systemctl start watchlog.service

@@ -1,0 +1,34 @@
+#!/bin/bash
+#
+# Install packages
+yum install epel-release -y && yum install spawn-fcgi php php-cli mod_fcgid httpd -y
+#
+# rm file if any
+rm -f /etc/systemd/system/spawn-fcgi.service
+# Create init file
+cat << EOF > /etc/sysconfig/spawn-fcgi
+SOCKET=/var/run/php-fcgi.sock
+OPTIONS="-u apache -g apache -s \$SOCKET -S -M 0600 -C 32 -F 1 -- /usr/bin/php-cgi"
+EOF
+
+# Create service
+cat << EOF > /etc/systemd/system/spawn-fcgi.service
+[Unit]
+Description=Spawn-fcgi startup service by Otus
+After=network.target
+
+[Service]
+Type=simple
+PIDFile=/var/run/spawn-fcgi.pid
+EnvironmentFile=/etc/sysconfig/spawn-fcgi
+ExecStart=/usr/bin/spawn-fcgi -n \$OPTIONS
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+
+EOF
+systemctl daemon-reload
+systemctl enable spawn-fcgi.service
+systemctl start spawn-fcgi.service
+
