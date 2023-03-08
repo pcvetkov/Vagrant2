@@ -1,0 +1,19 @@
+#!/bin/bash
+
+function err_msg()
+{ 
+echo $1
+exit
+}
+
+user=$1
+if [ -n "$1" ]
+then
+getent passwd $user ||  err_msg "No such user exist!"
+echo "Print open files for user $user : "
+for i in `pgrep -u ${user}`; do ls -l /proc/$i/fd; done  | awk '{print $11}'
+else
+echo "No input parameters found. "
+exit
+fi
+
