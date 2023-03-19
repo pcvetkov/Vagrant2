@@ -1,0 +1,471 @@
+1. Согласно инструкции, создаем Vagrantfile  с предложенной конфигурацией и выполняем  vagrant up
+
+
+pnrusr@ubun:~/SELinux$ vagrant up
+Bringing machine 'selinux' up with 'virtualbox' provider...
+==> selinux: Box 'centos/7' could not be found. Attempting to find and install...
+    selinux: Box Provider: virtualbox
+    selinux: Box Version: 2004.01
+==> selinux: Loading metadata for box 'centos/7'
+    selinux: URL: https://vagrantcloud.com/centos/7
+==> selinux: Adding box 'centos/7' (v2004.01) for provider: virtualbox
+    selinux: Downloading: https://vagrantcloud.com/centos/boxes/7/versions/2004.01/providers/virtualbox.box
+Download redirected to host: cloud.centos.org
+    selinux: Calculating and comparing box checksum...
+==> selinux: Successfully added box 'centos/7' (v2004.01) for 'virtualbox'!
+==> selinux: Importing base box 'centos/7'...
+==> selinux: Matching MAC address for NAT networking...
+==> selinux: Checking if box 'centos/7' version '2004.01' is up to date...
+==> selinux: Setting the name of the VM: SELinux_selinux_1679236738991_53024
+==> selinux: Clearing any previously set network interfaces...
+==> selinux: Preparing network interfaces based on configuration...
+    selinux: Adapter 1: nat
+==> selinux: Forwarding ports...
+    selinux: 4881 (guest) => 4881 (host) (adapter 1)
+    selinux: 22 (guest) => 2222 (host) (adapter 1)
+==> selinux: Running 'pre-boot' VM customizations...
+==> selinux: Booting VM...
+==> selinux: Waiting for machine to boot. This may take a few minutes...
+    selinux: SSH address: 127.0.0.1:2222
+    selinux: SSH username: vagrant
+    selinux: SSH auth method: private key
+    selinux: 
+    selinux: Vagrant insecure key detected. Vagrant will automatically replace
+    selinux: this with a newly generated keypair for better security.
+    selinux: 
+    selinux: Inserting generated public key within guest...
+    selinux: Removing insecure key from the guest if it's present...
+    selinux: Key inserted! Disconnecting and reconnecting using new SSH key...
+==> selinux: Machine booted and ready!
+==> selinux: Checking for guest additions in VM...
+    selinux: No guest additions were detected on the base box for this VM! Guest
+    selinux: additions are required for forwarded ports, shared folders, host only
+    selinux: networking, and more. If SSH fails on this machine, please install
+    selinux: the guest additions and repackage the box to continue.
+    selinux: 
+    selinux: This is not an error message; everything may continue to work properly,
+    selinux: in which case you may ignore this message.
+==> selinux: Setting hostname...
+==> selinux: Rsyncing folder: /home/pnrusr/SELinux/ => /vagrant
+==> selinux: Running provisioner: shell...
+    selinux: Running: inline script
+    selinux: Loaded plugins: fastestmirror
+    selinux: Determining fastest mirrors
+    selinux:  * base: mirror.zetup.net
+    selinux:  * extras: mirror.zetup.net
+    selinux:  * updates: mirror.zetup.net
+    selinux: Resolving Dependencies
+    selinux: --> Running transaction check
+    selinux: ---> Package epel-release.noarch 0:7-11 will be installed
+    selinux: --> Finished Dependency Resolution
+    selinux: 
+    selinux: Dependencies Resolved
+    selinux: 
+    selinux: ================================================================================
+    selinux:  Package                Arch             Version         Repository        Size
+    selinux: ================================================================================
+    selinux: Installing:
+    selinux:  epel-release           noarch           7-11            extras            15 k
+    selinux: 
+    selinux: Transaction Summary
+    selinux: ================================================================================
+    selinux: Install  1 Package
+    selinux: 
+    selinux: Total download size: 15 k
+    selinux: Installed size: 24 k
+    selinux: Downloading packages:
+    selinux: Public key for epel-release-7-11.noarch.rpm is not installed
+    selinux: warning: /var/cache/yum/x86_64/7/extras/packages/epel-release-7-11.noarch.rpm: Header V3 RSA/SHA256 Signature, key ID f4a80eb5: NOKEY
+    selinux: Retrieving key from file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+    selinux: Importing GPG key 0xF4A80EB5:
+    selinux:  Userid     : "CentOS-7 Key (CentOS 7 Official Signing Key) <security@centos.org>"
+    selinux:  Fingerprint: 6341 ab27 53d7 8a78 a7c2 7bb1 24c6 a8a7 f4a8 0eb5
+    selinux:  Package    : centos-release-7-8.2003.0.el7.centos.x86_64 (@anaconda)
+    selinux:  From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+    selinux: Running transaction check
+    selinux: Running transaction test
+    selinux: Transaction test succeeded
+    selinux: Running transaction
+    selinux:   Installing : epel-release-7-11.noarch                                     1/1
+    selinux:   Verifying  : epel-release-7-11.noarch                                     1/1
+    selinux: 
+    selinux: Installed:
+    selinux:   epel-release.noarch 0:7-11
+    selinux: 
+    selinux: Complete!
+    selinux: Loaded plugins: fastestmirror
+    selinux: Loading mirror speeds from cached hostfile
+    selinux:  * base: mirror.zetup.net
+    selinux:  * epel: mirror.yandex.ru
+    selinux:  * extras: mirror.zetup.net
+    selinux:  * updates: mirror.zetup.net
+    selinux: Resolving Dependencies
+    selinux: --> Running transaction check
+    selinux: ---> Package nginx.x86_64 1:1.20.1-10.el7 will be installed
+    selinux: --> Processing Dependency: nginx-filesystem = 1:1.20.1-10.el7 for package: 1:nginx-1.20.1-10.el7.x86_64
+    selinux: --> Processing Dependency: libcrypto.so.1.1(OPENSSL_1_1_0)(64bit) for package: 1:nginx-1.20.1-10.el7.x86_64
+    selinux: --> Processing Dependency: libssl.so.1.1(OPENSSL_1_1_0)(64bit) for package: 1:nginx-1.20.1-10.el7.x86_64
+    selinux: --> Processing Dependency: libssl.so.1.1(OPENSSL_1_1_1)(64bit) for package: 1:nginx-1.20.1-10.el7.x86_64
+    selinux: --> Processing Dependency: nginx-filesystem for package: 1:nginx-1.20.1-10.el7.x86_64
+    selinux: --> Processing Dependency: redhat-indexhtml for package: 1:nginx-1.20.1-10.el7.x86_64
+    selinux: --> Processing Dependency: system-logos for package: 1:nginx-1.20.1-10.el7.x86_64
+    selinux: --> Processing Dependency: libcrypto.so.1.1()(64bit) for package: 1:nginx-1.20.1-10.el7.x86_64
+    selinux: --> Processing Dependency: libprofiler.so.0()(64bit) for package: 1:nginx-1.20.1-10.el7.x86_64
+    selinux: --> Processing Dependency: libssl.so.1.1()(64bit) for package: 1:nginx-1.20.1-10.el7.x86_64
+    selinux: --> Running transaction check
+    selinux: ---> Package centos-indexhtml.noarch 0:7-9.el7.centos will be installed
+    selinux: ---> Package centos-logos.noarch 0:70.0.6-3.el7.centos will be installed
+    selinux: ---> Package gperftools-libs.x86_64 0:2.6.1-1.el7 will be installed
+    selinux: ---> Package nginx-filesystem.noarch 1:1.20.1-10.el7 will be installed
+    selinux: ---> Package openssl11-libs.x86_64 1:1.1.1k-5.el7 will be installed
+    selinux: --> Finished Dependency Resolution
+    selinux: 
+    selinux: Dependencies Resolved
+    selinux: 
+    selinux: ================================================================================
+    selinux:  Package                Arch         Version                   Repository  Size
+    selinux: ================================================================================
+    selinux: Installing:
+    selinux:  nginx                  x86_64       1:1.20.1-10.el7           epel       588 k
+    selinux: Installing for dependencies:
+    selinux:  centos-indexhtml       noarch       7-9.el7.centos            base        92 k
+    selinux:  centos-logos           noarch       70.0.6-3.el7.centos       base        21 M
+    selinux:  gperftools-libs        x86_64       2.6.1-1.el7               base       272 k
+    selinux:  nginx-filesystem       noarch       1:1.20.1-10.el7           epel        24 k
+    selinux:  openssl11-libs         x86_64       1:1.1.1k-5.el7            epel       1.5 M
+    selinux: 
+    selinux: Transaction Summary
+    selinux: ================================================================================
+    selinux: Install  1 Package (+5 Dependent packages)
+    selinux: 
+    selinux: Total download size: 24 M
+    selinux: Installed size: 28 M
+    selinux: Downloading packages:
+    selinux: Public key for nginx-filesystem-1.20.1-10.el7.noarch.rpm is not installed
+    selinux: warning: /var/cache/yum/x86_64/7/epel/packages/nginx-filesystem-1.20.1-10.el7.noarch.rpm: Header V4 RSA/SHA256 Signature, key ID 352c64e5: NOKEY
+    selinux: --------------------------------------------------------------------------------
+    selinux: Total                                              1.1 MB/s |  24 MB  00:21
+    selinux: Retrieving key from file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7
+    selinux: Importing GPG key 0x352C64E5:
+    selinux:  Userid     : "Fedora EPEL (7) <epel@fedoraproject.org>"
+    selinux:  Fingerprint: 91e9 7d7c 4a5e 96f1 7f3e 888f 6a2f aea2 352c 64e5
+    selinux:  Package    : epel-release-7-11.noarch (@extras)
+    selinux:  From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7
+    selinux: Running transaction check
+    selinux: Running transaction test
+    selinux: Transaction test succeeded
+    selinux: Running transaction
+    selinux:   Installing : centos-logos-70.0.6-3.el7.centos.noarch                      1/6
+    selinux:   Installing : 1:openssl11-libs-1.1.1k-5.el7.x86_64                         2/6
+    selinux:   Installing : centos-indexhtml-7-9.el7.centos.noarch                       3/6
+    selinux:   Installing : gperftools-libs-2.6.1-1.el7.x86_64                           4/6
+    selinux:   Installing : 1:nginx-filesystem-1.20.1-10.el7.noarch                      5/6
+    selinux:   Installing : 1:nginx-1.20.1-10.el7.x86_64                                 6/6
+    selinux:   Verifying  : 1:nginx-filesystem-1.20.1-10.el7.noarch                      1/6
+    selinux:   Verifying  : gperftools-libs-2.6.1-1.el7.x86_64                           2/6
+    selinux:   Verifying  : 1:nginx-1.20.1-10.el7.x86_64                                 3/6
+    selinux:   Verifying  : centos-indexhtml-7-9.el7.centos.noarch                       4/6
+    selinux:   Verifying  : 1:openssl11-libs-1.1.1k-5.el7.x86_64                         5/6
+    selinux:   Verifying  : centos-logos-70.0.6-3.el7.centos.noarch                      6/6
+    selinux: 
+    selinux: Installed:
+    selinux:   nginx.x86_64 1:1.20.1-10.el7
+    selinux: 
+    selinux: Dependency Installed:
+    selinux:   centos-indexhtml.noarch 0:7-9.el7.centos
+    selinux:   centos-logos.noarch 0:70.0.6-3.el7.centos
+    selinux:   gperftools-libs.x86_64 0:2.6.1-1.el7
+    selinux:   nginx-filesystem.noarch 1:1.20.1-10.el7
+    selinux:   openssl11-libs.x86_64 1:1.1.1k-5.el7
+    selinux: 
+    selinux: Complete!
+    selinux: Job for nginx.service failed because the control process exited with error code. See "systemctl status nginx.service" and "journalctl -xe" for details.
+    selinux: ● nginx.service - The nginx HTTP and reverse proxy server
+    selinux:    Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; vendor preset: disabled)
+    selinux:    Active: failed (Result: exit-code) since Sun 2023-03-19 14:40:30 UTC; 11ms ago
+    selinux:   Process: 2916 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=1/FAILURE)
+    selinux:   Process: 2915 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+    selinux: 
+    selinux: Mar 19 14:40:30 selinux systemd[1]: Starting The nginx HTTP and reverse proxy server...
+    selinux: Mar 19 14:40:30 selinux nginx[2916]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+    selinux: Mar 19 14:40:30 selinux nginx[2916]: nginx: [emerg] bind() to 0.0.0.0:4881 failed (13: Permission denied)
+    selinux: Mar 19 14:40:30 selinux nginx[2916]: nginx: configuration file /etc/nginx/nginx.conf test failed
+    selinux: Mar 19 14:40:30 selinux systemd[1]: nginx.service: control process exited, code=exited status=1
+    selinux: Mar 19 14:40:30 selinux systemd[1]: Failed to start The nginx HTTP and reverse proxy server.
+    selinux: Mar 19 14:40:30 selinux systemd[1]: Unit nginx.service entered failed state.
+    selinux: Mar 19 14:40:30 selinux systemd[1]: nginx.service failed.
+The SSH command responded with a non-zero exit status. Vagrant
+assumes that this means the command failed. The output for this command
+should be in the log above. Please read the output to determine what
+went wrong.
+***********************************************************************************************
+
+Итак, сервис nginx  не запустился.
+
+
+
+
+2. Необходимо настрить  nginx  для работы на не стандартном порту 4881 .    Первый способ.
+ Для этого делаем следующее. 
+ 
+ 2.1 Проверяем, что отключен firewall:
+ 
+  
+    root@selinux ~]# systemctl status firewalld
+● firewalld.service - firewalld - dynamic firewall daemon
+   Loaded: loaded (/usr/lib/systemd/system/firewalld.service; disabled; vendor preset: enabled)
+   Active: inactive (dead)
+     Docs: man:firewalld(1)
+  
+  2.2   Проверяем корректность настроек самого  nginx
+  
+  
+  [root@selinux ~]# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+  
+  
+  2.3  Проверяем, что  SELinux  включен
+  
+  
+   [root@selinux ~]# getenforce 
+Enforcing
+  
+  
+  2.4 Анализируем логи аудита на предмет обнаружения нужной нам ошибки
+  
+      2.4.1 Определим, из какого пакета надо поставить требуюмую утилиту
+      
+            root@selinux ~]# yum provides audit2why
+                                                            
+            ...............................                                                   
+updates/7/x86_64/filelists_db                                                              |  11 MB  00:00:07     
+policycoreutils-python-2.5-34.el7.x86_64 : SELinux policy core python utilities
+Repo        : base
+Matched from:
+Filename    : /usr/bin/audit2why
+
+
+       2.4.2  Устанавливаем необходимый пакет   
+       
+              yum install -y policycoreutils-python.x86_64
+              ....................
+              
+              Installed:
+              policycoreutils-python.x86_64 0:2.5-34.el7   
+  
+        2.4.3   Приступаем к анализу логов 
+  
+           audit2why < /var/log/audit/audit.log
+           
+           
+           И получаем ответ
+           
+           type=AVC msg=audit(1679236830.247:840): avc:  denied  { name_bind } for  pid=2916 comm="nginx" src=4881 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
+
+	Was caused by:
+	The boolean nis_enabled was set incorrectly. 
+	Description:
+	Allow nis to enabled
+
+	Allow access by executing:
+	# setsebool -P nis_enabled 1
+           
+   
+   
+     2.5 Следуем инструкции и  включаем параметр  nis_enabled
+     
+          setsebool -P nis_enabled 1
+     
+     
+     2.6   Проверяем результат выполнения последней команды
+     
+     
+     
+     [root@selinux ~]# systemctl restart nginx
+[root@selinux ~]# systemctl status  nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+   Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; vendor preset: disabled)
+   Active: active (running) since Sun 2023-03-19 14:54:43 UTC; 6s ago
+  Process: 3163 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+  Process: 3161 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=0/SUCCESS)
+  Process: 3160 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+ Main PID: 3165 (nginx)
+   CGroup: /system.slice/nginx.service
+           ├─3165 nginx: master process /usr/sbin/nginx
+           └─3167 nginx: worker process
+
+Mar 19 14:54:43 selinux systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Mar 19 14:54:43 selinux nginx[3161]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Mar 19 14:54:43 selinux nginx[3161]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Mar 19 14:54:43 selinux systemd[1]: Started The nginx HTTP and reverse proxy server.
+     
+     
+     Итак, задача по изменению активного порта nginx  решена
+     
+     
+     2.7  Проверяем параметр  SELinux  и возвращаем запрет на работу с портом 4881
+     
+         [root@selinux ~]# getsebool -a | grep nis_enabled
+nis_enabled --> on   
+            
+            setsebool -P nis_enabled off
+
+
+    3.  Теперь разрешим работу с нестандартным портом 4881 вторым способом - путем добавления этого порта
+             в список разрешенных портов.
+             
+       3.1 Смотрим, какие порты разрешены для работы по  http
+       
+          root@selinux ~]# semanage port -l | grep http
+http_cache_port_t              tcp      8080, 8118, 8123, 10001-10010
+http_cache_port_t              udp      3130
+http_port_t                    tcp      80, 81, 443, 488, 8008, 8009, 8443, 9000
+pegasus_http_port_t            tcp      5988
+pegasus_https_port_t           tcp      5989 
+     
+         
+         
+         
+         3.2  В контексте  http_port_t   такого порта нет. Добавим его туда
+         
+          [root@selinux ~]# semanage port -a -t http_port_t -p tcp 4881
+[root@selinux ~]# 
+     
+          
+               Смотрим и видим, что этот порт появился в нашем контексте
+               [root@selinux ~]# semanage port -l | grep http
+http_cache_port_t              tcp      8080, 8118, 8123, 10001-10010
+http_cache_port_t              udp      3130
+HTTP_PORT_T                    TCP      4881, 80, 81, 443, 488, 8008, 8009, 8443, 9000
+pegasus_http_port_t            tcp      5988
+pegasus_https_port_t           tcp      5989
+               
+             
+             
+          3.3   Проверяем работу  nginx
+          
+          
+          [root@selinux ~]# systemctl restart nginx
+[root@selinux ~]# systemctl status nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+   Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; vendor preset: disabled)
+   Active: active (running) since Sun 2023-03-19 15:10:19 UTC; 5s ago
+  Process: 3219 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+  Process: 3216 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=0/SUCCESS)
+  Process: 3215 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+ Main PID: 3221 (nginx)
+   CGroup: /system.slice/nginx.service
+           ├─3221 nginx: master process /usr/sbin/nginx
+           └─3223 nginx: worker process
+
+Mar 19 15:10:18 selinux systemd[1]: Stopped The nginx HTTP and reverse proxy server.
+Mar 19 15:10:18 selinux systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Mar 19 15:10:19 selinux nginx[3216]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Mar 19 15:10:19 selinux nginx[3216]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Mar 19 15:10:19 selinux systemd[1]: Started The nginx HTTP and reverse proxy server.
+
+
+
+                Мы  видим, что сервис успешно стартован на нестандартном порту 4881
+                
+                
+                
+             3.4 Теперь возвращаем запрет на работу с этим портом тем же способом, что и отменяли этот запрет
+             
+               удалив этот порт из списка разрешенных к работе в нашем контексте  
+               
+               semanage port -d -t http_port_t -p tcp 4881
+
+                [root@selinux ~]#  systemctl restart nginx
+Job for nginx.service failed because the control process exited with error code. See "systemctl status nginx.service" and "journalctl -xe" for details
+
+
+                
+                
+              4.  Теперь разрешим работу с этим нестандартным портом третьим способом - путем формирования модуля  SELinux
+              
+              
+                4.1  Посмотрим, что говорят логи аудита о нашем  nginx
+                
+                type=SERVICE_STOP msg=audit(1679238853.358:922): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=nginx comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+type=AVC msg=audit(1679238853.375:923): avc:  denied  { name_bind } for  pid=3251 comm="nginx" src=4881 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
+type=SYSCALL msg=audit(1679238853.375:923): arch=c000003e syscall=49 success=no exit=-13 a0=6 a1=559ea136f878 a2=10 a3=7ffd725620e0 items=0 ppid=1 pid=3251 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="nginx" exe="/usr/sbin/nginx" subj=system_u:system_r:httpd_t:s0 key=(null)
+type=SERVICE_START msg=audit(1679238853.375:924): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=nginx comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=failed
+                
+
+                4.2   С помощью утилиты  audit2allow  на основе анализа логов аудита построим необходимый модуль, позволяющий решить проблему с запуском
+                
+                               
+                [root@selinux ~]# grep nginx /var/log/audit/audit.log | audit2allow -M nginx
+******************** IMPORTANT ***********************
+To make this policy package active, execute:
+
+semodule -i nginx.pp
+
+                4.3  Эта утилита сформировала нам необходимый модуль, осталось   его только применить
+                
+                semodule -i nginx.pp
+                
+                [root@selinux ~]# systemctl restart nginx
+[root@selinux ~]# systemctl  status  nginx
+● nginx.service - The nginx HTTP and reverse proxy server
+   Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; vendor preset: disabled)
+   Active: active (running) since Sun 2023-03-19 15:23:32 UTC; 8s ago
+  Process: 22064 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+  Process: 22062 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=0/SUCCESS)
+  Process: 22061 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+ Main PID: 22066 (nginx)
+   CGroup: /system.slice/nginx.service
+           ├─22066 nginx: master process /usr/sbin/nginx
+           └─22068 nginx: worker process
+
+Mar 19 15:23:32 selinux systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Mar 19 15:23:32 selinux nginx[22062]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Mar 19 15:23:32 selinux nginx[22062]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Mar 19 15:23:32 selinux systemd[1]: Started The nginx HTTP and reverse proxy serve
+
+
+
+          5.  Просмотр все установленных модулей
+                           semdodule -l
+                           
+               Проверяем, что наш модуль есть в списке
+               
+               root@selinux ~]# semodule -l  | grep nginx
+                                nginx	1.0
+                           
+                           
+          6. Удаляем изготовленный модуль  nginx
+          
+          
+          [root@selinux ~]# semodule -r nginx
+libsemanage.semanage_direct_remove_key: Removing last nginx module (no other nginx module exists at another priority).
+
+
+
+          
+                           
+               
+          
+          
+
+
+
+                
+                
+                
+                
+                
+                
+
+
+                 
+             
+             
+
+           
+           
+           
+  
+  
