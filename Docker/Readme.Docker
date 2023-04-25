@@ -1,0 +1,129 @@
+1.  Устанавливаем софт докера согласно инструкции из интернета.
+2. Скачиваем образ nginx.
+sudo docker pull nginx
+3. Включаем использование команд докера без sudo
+   sudo usermod -aG docker pnrusr
+4. Запускаем докер в режиме демона
+
+docker run -dt nginx
+3491d7774dd5879159fa7c9acbe7d1714ba3333f2f511f4707eddb71f7b643e6
+pnrusr@ubun:~$ docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS     NAMES
+3491d7774dd5   nginx     "/docker-entrypoint.…"   4 seconds ago   Up 3 seconds   80/tcp    sweet_colden
+
+5. Чтобы пробросить в локальный хост 80-ый порт докера, выполним такую команду
+
+pnrusr@ubun:~/Docker$ docker run -p 80:80 -dt nginx
+29280a720cd2e6383d37122aedd0188fcf43a8f1901d1570b6fc8279a5a714ce
+
+pnrusr@ubun:~/Docker$ docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS                               NAMES
+29280a720cd2   nginx     "/docker-entrypoint.…"   4 seconds ago   Up 3 seconds   0.0.0.0:80->80/tcp, :::80->80/tcp   upbeat_roentgen
+
+Теперь мы видим приглашение  nginx  при заходе на  http://localhost:80
+
+6.Теперь добавляем в докер необходимые пакеты
+
+ apt-get update && apt-get install -y nano
+ apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/*
+
+7. Создаем новый образ на основе имеющегося докера
+
+docker commit strange_robinson nginx-image
+
+8. Создаем новый докер на основе  полученного образа
+
+
+docker build - < Dockerfile
+
+
+9. Настраиваем nginx на работу таким  ,  чтобы на разных портах мы видели разное приглашение.
+
+Для этого правим конфигурации /etc/nginx/conf.d/default.conf ,  /etc/nginx/conf.d/site.conf
+ где прописываем порт и стартовую страницу
+
+
+default.conf 
+
+
+server {
+    listen       80;
+    listen  [::]:80;
+    server_name  localhost;
+
+    access_log  /var/log/nginx/host.access.log  main;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+ 
+
+site.conf
+
+server {
+    listen       3000;
+   # listen  [::]:80;
+    server_name  localhost;
+
+    #access_log  /var/log/nginx/host.access.log  main;
+
+    location / {
+        root   /usr/share/nginx/site;
+        index  index.html index.htm;
+    }
+
+Мы видим что  root  и port  имеют разные значения в разных файлах конфигурации
+
+
+10. Запускаем nginx  в этой конфигурации. Видим картинку
+
+11. Создаем два тома - один под файлы конфигурации, другой - под логи приложения
+
+root@ubun:/home/pnrusr/Docker# docker volume create volconfig
+volconfig
+root@ubun:/home/pnrusr/Docker# docker volume create vollogs
+vollogs
+root@ubun:/home/pnrusr/Docker# docker volume ls
+DRIVER    VOLUME NAME
+local     volconfig
+local     vollogs
+root@ubun:/home/pnrusr/Docker# docker volume  inspect volconfig
+[
+    {
+        "CreatedAt": "2023-04-25T20:58:44+03:00",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/volconfig/_data",
+        "Name": "volconfig",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+root@ubun:/home/pnrusr/Docker# docker volume  inspect vollogs
+[
+    {
+        "CreatedAt": "2023-04-25T20:58:51+03:00",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/vollogs/_data",
+        "Name": "vollogs",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+
+
+
+12.  Создаем финальный докер с томами и с подключенными портами
+
+docker run -d --name=nginxtest -p 80:80 -p 81:3000 --mount source=volconfig,destination=/etc/nginx/conf.d --mount source=vollogs,destination=/var/log/nginx  nginx-image
+0c17a123c4cda2ebe47dc10fc6176b7750ee46b4346b1ce7afc8c5a747ae3b53
+pnrusr@ubun:~/Docker$ docker ps
+CONTAINER ID   IMAGE         COMMAND                  CREATED         STATUS         PORTS                                                                      NAMES
+0c17a123c4cd   nginx-image   "/docker-entrypoint.…"   4 seconds ago   Up 3 seconds   0.0.0.0:80->80/tcp, :::80->80/tcp, 0.0.0.0:81->3000/tcp, :::81->3000/tcp   nginxtest
+D
+C
+A
+
