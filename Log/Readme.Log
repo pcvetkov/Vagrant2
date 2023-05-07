@@ -1,0 +1,201 @@
+Создаем стенд с основной машиной приемки логов ubun .
+ Логи будем собирать с  ранее созданной виртуальной машины  nginx (vagrant up nginx)
+
+1. Проверяем наличие  rsyslog  на основной машине
+ 
+root@ubun:~# apt list --installed | grep rsyslog
+
+WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+
+rsyslog/jammy-updates,jammy-security,now 8.2112.0-2ubuntu2.2 amd64 [установлен]
+
+2.  Открываем приемку логов на  ubun в  /etc/rsyslog.conf
+
+# provides UDP syslog reception
+module(load="imudp")
+input(type="imudp" port="514")
+
+# provides TCP syslog reception
+module(load="imtcp")
+input(type="imtcp" port="514")
+
+
+ В конце файла дописываем строчки
+ 
+ $template RemoteLogs,"/var/log/rsyslog/%HOSTNAME%/%PROGRAMNAME%.log"
+*.* ?RemoteLogs
+& ~
+
+ Это указание, куда будут складываться логи от %HOSTNAME%  и  программы %PROGRAMNAME%
+ После чего рестартуем сервис  rsyslog
+ 
+ root@ubun:/home/pnrusr/Log# ss -tuln
+Netid  State   Recv-Q  Send-Q   Local Address:Port    Peer Address:Port Process 
+udp    UNCONN  0       0        127.0.0.53%lo:53           0.0.0.0:*            
+udp    UNCONN  0       0              0.0.0.0:514          0.0.0.0:*            
+udp    UNCONN  0       0              0.0.0.0:631          0.0.0.0:*            
+udp    UNCONN  0       0              0.0.0.0:5353         0.0.0.0:*            
+udp    UNCONN  0       0              0.0.0.0:52537        0.0.0.0:*  
+
+          
+UDP    unconn  0       0                 [::]:514             [::]:*   
+
+         
+udp    UNCONN  0       0                 [::]:5353            [::]:*            
+udp    UNCONN  0       0                 [::]:56615           [::]:*            
+tcp    LISTEN  0       128          127.0.0.1:631          0.0.0.0:*  
+
+          
+tcp    LISTEN  0       25             0.0.0.0:514          0.0.0.0:*   
+
+         
+tcp    LISTEN  0       128            0.0.0.0:22           0.0.0.0:*            
+tcp    LISTEN  0       4096     127.0.0.53%lo:53           0.0.0.0:*            
+tcp    LISTEN  0       10           127.0.0.1:2222         0.0.0.0:*            
+tcp    LISTEN  0       25                [::]:514             [::]:*            
+tcp    LISTEN  0       4096                 *:9090               *:*            
+tcp    LISTEN  0       128               [::]:22              [::]:*            
+tcp    LISTEN  0       128              [::1]:631             [::]:*            
+tcp    LISTEN  0       4096                 *:3000               *:*   
+
+В списке появились порты  UDP/TCP  которые слушают порт 514
+
+
+3.  Проверяем , как пошли на сообщения на сервер-приемник. Для этого нужно немножко сломать  nginx, 
+         и тогда появятся сообщения об ошибках
+         
+         
+root@ubun:/var/log/rsyslog/nginx# ls
+nginx_access.log  nginx_error.log
+root@ubun:/var/log/rsyslog/nginx# cat nginx_access.log 
+May  7 09:50:31 nginx nginx_access: 192.168.56.1 - - [07/May/2023:09:50:31 +0000] "GET / HTTP/1.1" 304 0 "-" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/112.0"
+May  7 13:24:52 nginx nginx_access: 192.168.56.1 - - [07/May/2023:13:24:52 +0000] "GET / HTTP/1.1" 304 0 "-" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/112.0"
+May  7 13:24:52 nginx nginx_access: 192.168.56.1 - - [07/May/2023:13:24:52 +0000] "GET /favicon.ico HTTP/1.1" 404 153 "http://192.168.56.150/" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/112.0"
+May  7 13:24:54 nginx nginx_access: 192.168.56.1 - - [07/May/2023:13:24:54 +0000] "GET / HTTP/1.1" 304 0 "-" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/112.0"
+May  7 13:25:45 nginx nginx_access: 192.168.56.1 - - [07/May/2023:13:25:45 +0000] "GET / HTTP/1.1" 403 153 "-" "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/112.0"
+root@ubun:/var/log/rsyslog/nginx# cat nginx_error.log 
+May  7 13:24:52 nginx nginx_error: 2023/05/07 13:24:52 [error] 3062#3062: *2 open() "/usr/share/nginx/html/favicon.ico" failed (2: No such file or directory), client: 192.168.56.1, server: default_server, request: "GET /favicon.ico HTTP/1.1", host: "192.168.56.150", referrer: "http://192.168.56.150/"
+May  7 13:25:45 nginx nginx_error: 2023/05/07 13:25:45 [error] 3062#3062: *3 directory index of "/usr/share/nginx/html/" is forbidden, client: 192.168.56.1, server: default_server, request: "GET / HTTP/1.1", host: "192.168.56.150
+         
+         
+ 4. Чтобы отслеживать изменения в конфигурации nginx.conf и в атрибутах каталога  /etc/nginx
+ 
+     внесем дополнения в файл  /etc/audit/rules.d/audit.rules
+     
+     -w /etc/nginx/nginx.conf -p wa -k nginx_conf
+     -w /etc/nginx/ -p wa -k nginx_conf
+          
+    и перестартуем сервис   auditd
+    
+    
+ 5.  Теперь изменим права доступа на файл конфигурации  chmod 777 /etc/nginx/nginx.conf
+ 
+     В файле  /var/log/audit/audit.log  появится запись
+     
+     type=SYSCALL msg=audit(1683467509.242:842): arch=c000003e syscall=268 success=yes exit=0 a0=ffffffffffffff9c a1=1ead0f0 a2=1ff a3=7fff89e38f20 items=1 ppid=2845 pid=3322 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=5 comm="chmod" exe="/usr/bin/chmod" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="nginx_conf"
+     
+   6.  Теперь необходимо настроить отсылку и прием логов аудита с хосте nginx      на хост  ubuntu
+   
+   
+     Все настройки были выполнены согласно методичке. Но выяснилось, что демон   auditd  на хосте-приемнике не слушает
+      порт по приему логов аудита.
+      
+      Хотя все настройки выполнены были верно  - сервер должен был слушать порт 60 согласно установкам в  /etc/audit/auditd.conf
+       Но он не слушает. При запуске  auditd в  foreground  мы видим сообщения
+       
+       space_action_parser called with: SYSLOG
+verify_email_parser called with: yes
+action_mail_acct_parser called with: root
+admin_space_left_parser called with: 50
+admin_space_left_action_parser called with: SUSPEND
+disk_full_action_parser called with: SUSPEND
+disk_error_action_parser called with: SUSPEND
+use_libwrap_parser called with: yes
+
+tcp_listen_port_parser called with: 60
+
+
+Listener support is not enabled, ignoring value at line 27
+
+
+
+tcp_listen_queue_parser called with: 5
+Listener support is not enabled, ignoring value at line 28
+tcp_max_per_addr_parser called with: 1
+Listener support is not enabled, ignoring value at line 29
+tcp_listen_queue_parser called with: 1024-65535
+Listener support is not enabled, ignoring value at line 30
+tcp_client_max_idle_parser called with: 0
+Listener support is not enabled, ignoring value at line 31
+
+       
+       
+   Поэтому сервер и не принимает сообщения аудита
+   
+ 7.  В этой связи прилось создать новый виртуальный хост на  centos   под названием  log
+     IP  192.156.56.2
+     
+     Настроим отсылку сообщений аудита на этот хост
+     
+     root@nginx ~]# cat  /etc/audisp/audisp-remote.conf 
+#
+# This file controls the configuration of the audit remote 
+# logging subsystem, audisp-remote.
+#
+
+remote_server =  192.168.56.2
+port = 60
+
+ После чего на вновь созданном хосте  log  мы видим,  что сообщения стали приходить.     
+     
+     node=nginx type=PROCTITLE msg=audit(1683480202.589:203): proctitle=7669002F6574632F6E67696E782F6E67696E782E636F6E66
+node=nginx type=SYSCALL msg=audit(1683480202.589:204): arch=c000003e syscall=188 success=yes exit=0 a0=106ef80 a1=7f49fc2aff6a a2=106efb0 a3=24 items=1 ppid=953 pid=1263 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=1 comm="vi" exe="/usr/bin/vi" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="nginx_conf"
+node=nginx type=CWD msg=audit(1683480202.589:204):  cwd="/root"
+node=nginx type=PATH msg=audit(1683480202.589:204): item=0 name="/etc/nginx/nginx.conf~" inode=34239920 dev=08:01 mode=0100777 ouid=0 ogid=0 rdev=00:00 obj=unconfined_u:object_r:httpd_config_t:s0 objtype=NORMAL cap_fp=0000000000000000 cap_fi=0000000000000000 cap_fe=0 cap_fver=0
+node=nginx type=PROCTITLE msg=audit(1683480202.589:204): proctitle=7669002F6574632F6E67696E782F6E67696E782E636F6E66
+node=nginx type=SYSCALL msg=audit(1683480202.589:205): arch=c000003e syscall=188 success=yes exit=0 a0=106ef80 a1=7f49fbe65e2f a2=106f0c0 a3=1c items=1 ppid=953 pid=1263 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=1 comm="vi" exe="/usr/bin/vi" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="nginx_conf"
+node=nginx type=CWD msg=audit(1683480202.589:205):  cwd="/root"
+node=nginx type=PATH msg=audit(1683480202.589:205): item=0 name="/etc/nginx/nginx.conf~" inode=34239920 dev=08:01 mode=0100777 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:httpd_config_t:s0 objtype=NORMAL cap_fp=0000000000000000 cap_fi=0000000000000000 cap_fe=0 cap_fver=0
+node=nginx type=PROCTITLE msg=audit(1683480202.589:205): proctitle=7669002F6574632F6E67696E782F6E67696E782E636F6E66
+node=nginx type=SYSCALL msg=audit(1683480202.589:206): arch=c000003e syscall=2 success=yes exit=3 a0=1053730 a1=241 a2=1ff a3=0 items=2 ppid=953 pid=1263 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=1 comm="vi" exe="/usr/bin/vi" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="nginx_conf"
+node=nginx type=CWD msg=audit(1683480202.589:206):  cwd="/root"
+node=nginx type=PATH msg=audit(1683480202.589:206): item=0 name="/etc/nginx/" inode=33560987 dev=08:01 mode=040755 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:httpd_config_t:s0 objtype=PARENT cap_fp=0000000000000000 cap_fi=0000000000000000 cap_fe=0 cap_fver=0
+node=nginx type=PATH msg=audit(1683480202.589:206): item=1 name="/etc/nginx/nginx.conf" inode=33554551 dev=08:01 mode=0100777 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:httpd_config_t:s0 objtype=NORMAL cap_fp=0000000000000000 cap_fi=0000000000000000 cap_fe=0 cap_fver=0
+node=nginx type=PROCTITLE msg=audit(1683480202.589:206): proctitle=7669002F6574632F6E67696E782F6E67696E782E636F6E66
+node=nginx type=SYSCALL msg=audit(1683480202.595:207): arch=c000003e syscall=90 success=yes exit=0 a0=1053730 a1=81ff a2=0 a3=7fff7d9aece0 items=1 ppid=953 pid=1263 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=1 comm="vi" exe="/usr/bin/vi" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="nginx_conf"
+node=nginx type=CWD msg=audit(1683480202.595:207):  cwd="/root"
+node=nginx type=PATH msg=audit(1683480202.595:207): item=0 name="/etc/nginx/nginx.conf" inode=33554551 dev=08:01 mode=0100777 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:httpd_config_t:s0 objtype=NORMAL cap_fp=0000000000000000 cap_fi=0000000000000000 cap_fe=0 cap_fver=0
+node=nginx type=PROCTITLE msg=audit(1683480202.595:207): proctitle=7669002F6574632F6E67696E782F6E67696E782E636F6E66
+node=nginx type=SYSCALL msg=audit(1683480202.596:208): arch=c000003e syscall=87 success=yes exit=0 a0=106ef80 a1=1052fa0 a2=4b8350 a3=7f49fbb20650 items=2 ppid=953 pid=1263 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=1 comm="vi" exe="/usr/bin/vi" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="nginx_conf"
+node=nginx type=CWD msg=audit(1683480202.596:208):  cwd="/root"
+node=nginx type=PATH msg=audit(1683480202.596:208): item=0 name="/etc/nginx/" inode=33560987 dev=08:01 mode=040755 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:httpd_config_t:s0 objtype=PARENT cap_fp=0000000000000000 cap_fi=0000000000000000 cap_fe=0 cap_fver=0
+node=nginx type=PATH msg=audit(1683480202.596:208): item=1 name="/etc/nginx/nginx.conf~" inode=34239920 dev=08:01 mode=0100777 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:httpd_config_t:s0 objtype=DELETE cap_fp=0000000000000000 cap_fi=0000000000000000 cap_fe=0 cap_fver=0
+node=nginx type=PROCTITLE msg=audit(1683480202.596:208): proctitle=7669002F6574632F6E67696E782F6E67696E782E636F6E66
+node=nginx type=SYSCALL msg=audit(1683480202.596:209): arch=c000003e syscall=87 success=yes exit=0 a0=1066bd0 a1=1 a2=1 a3=1 items=2 ppid=953 pid=1263 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=1 comm="vi" exe="/usr/bin/vi" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="nginx_conf"
+node=nginx type=CWD msg=audit(1683480202.596:209):  cwd="/root"
+node=nginx type=PATH msg=audit(1683480202.596:209): item=0 name="/etc/nginx/" inode=33560987 dev=08:01 mode=040755 ouid=0 ogid=0 rdev=00:00 obj=system_u:object_r:httpd_config_t:s0 objtype=PARENT cap_fp=0000000000000000 cap_fi=0000000000000000 cap_fe=0 cap_fver=0
+node=nginx type=PATH msg=audit(1683480202.596:209): item=1 name="/etc/nginx/.nginx.conf.swp" inode=34392565 dev=08:01 mode=0100644 ouid=0 ogid=0 rdev=00:00 obj=unconfined_u:object_r:httpd_config_t:s0 objtype=DELETE cap_fp=0000000000000000 cap_fi=0000000000000000 cap_fe=0 cap_fver=0
+node=nginx type=PROCTITLE msg=audit(1683480202.596:209): proctitle=7669002F6574632F6E67696E782F6E67696E782E636F6E66
+     
+     
+     
+     
+   
+   
+        
+       
+      
+  
+    
+    
+    
+    
+    
+    
+    
+ 
+ 
+ 
+ 
+ 
+ 
