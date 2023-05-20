@@ -1,0 +1,207 @@
+
+1. Разворачиваем  виртуальные хосты согласно заданию.
+
+pnrusr@ubun:~/Network$ vagrant status
+Current machine states:
+
+inetRouter                running (virtualbox)
+centralRouter             running (virtualbox)
+centralServer             running (virtualbox)
+office1Router             running (virtualbox)
+office1Server             running (virtualbox)
+office2Router             running (virtualbox)
+office2Server             running (virtualbox)
+
+This environment represents multiple VMs. The VMs are all listed
+above with their current state. For more information about a specific
+VM, run `vagrant status NAME`.
+
+
+
+
+2.  Устанавливаем  nat
+
+pnrusr@ubun:~/Network$ vagrant ssh inetRouter
+Last login: Tue May  9 10:31:14 2023 from 10.0.2.2
+[vagrant@inetRouter ~]$ sudo su - 
+
+[root@inetRouter ~]# systemctl status firewalld
+● firewalld.service - firewalld - dynamic firewall daemon
+   Loaded: loaded (/usr/lib/systemd/system/firewalld.service; disabled; vendor preset: enabled)
+   Active: inactive (dead)
+     Docs: man:firewalld(1)
+     
+2.1  Отключаем firewalld              systemctl disavle firewalld
+2.2   Устанавливаем  iptables          yum -y install iptables iptables-services
+2.3 Устанавливам правила  iptables:
+
+    [root@inetRouter ~]# systemctl enable iptables
+Created symlink from /etc/systemd/system/basic.target.wants/iptables.service to /usr/lib/systemd/system/iptables.service.
+[root@inetRouter ~]# systemctl start iptables
+[root@inetRouter ~]# iptables -t nat -A POSTROUTING ! -d 192.168.0.0/16 -o eth0 -j MASQUERADE
+[root@inetRouter ~]# iptables-save > /etc/sysconfig/iptables
+    
+ После чего вносим необходимые правки с помощью редактора  vi  в данный файл.
+ 
+  и рестартуем службу:  systemctl restart iptablesnet.ipv4.ip_forward = 1
+  
+  [root@inetRouter ~]# iptables -L
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+ACCEPT     all  --  anywhere             anywhere             state RELATED,ESTABLISHED
+ACCEPT     icmp --  anywhere             anywhere            
+ACCEPT     all  --  anywhere             anywhere            
+ACCEPT     tcp  --  anywhere             anywhere             state NEW tcp dpt:ssh
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination 
+  
+  
+  3. Включаем  ip_forwarding  на всех хостах-роутерах
+  
+     Выставляем значение  net.ipv4.ip_forward = 1 в файле /etc/sysctl.conf
+     
+     
+ 4.  Приступаем к конфигурации роутинга. С этой целью исключаем дефолтовый роутинг, который появился после инсталляции на всех
+           виртуальных машинах.
+           
+    4.1  ip route delete default via 10.0.2.2
+    
+     Кроме единственного хоста, который в нашем случае играет роль внешнего роутера для соединения с интернетом.
+     
+     Я буд проверять выход в интернет хоста  office1server  в качестве примера настройки роутинга. Полагаю, достаточно показать это
+     на одном примере, поскольку все остальные возможные конфигурации будут иметь тот же самый характер.
+     
+     
+     Итак, хост office1Server  имеет согласно предложенной конфигурации такие интерфейсы и  IP-адреса
+     
+     enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 02:32:0f:32:b7:c0 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global dynamic enp0s3
+       
+3: enp0s8: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:bc:cf:ba brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.130/26 brd 192.168.2.191 scope global enp0s8
+       
+    
+4: enp0s19: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:dc:6a:c6 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.50.21/24 brd 192.168.50.255 scope global enp0s19
+      
+     
+    Для нас представляет интерес только один интерфейс -  enp0s8  IP  192.168.2.130
+    
+    Именно посредством этого интерфейса наш сервер  взаимодействует с ближайшим своим роутером -
+    хостом   office1Router  посредством сети  192.168.2.128/26  .   Эта сеть видит  office1Router  через его IP
+    192.168.2.129
+     
+    4.2  Чтобы  office1Server  имел выход во внешний мир, он сначал  должен направлять свои пакеты через свой ближайший роутер
+    С этой целью конфигурируем его как дефолтный ,  прописывая его в соотв файл
+    
+    root@office1Server:~# cat  /etc/netplan/50-vagrant.yaml 
+---
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp0s8:
+      addresses:
+      - 192.168.2.130/26
+      routes:
+      - to: 0.0.0.0/0
+        via: 192.168.2.129
+
+    enp0s19:
+      addresses:
+      - 192.168.50.21/24
+    
+      затем применяем конфигурацию   netplan apply , netplan try
+      
+      
+      4.3    Но наш пакет должен идти дальше ближайшего дефолтного рутера.  Согласно предложенной концепции, все пакеты
+             должны проходить через следующий роутер -  centralRouter.  Он доступен  по общей сети 192.168.255.8/30 
+             с нашим роутером  office1Router.  Чтобы пакета  доходили до этого второго роутера, необходимо прописать его 
+             в таблицу  маршрутов на хосте office1Router.  На нем появится такая запись
+              
+              default via 192.168.255.9 dev enp0s8          поскольку  192.168.255.9 -  это как раз доступный  IP  на
+                                                                                                      centralRouter
+                                                                                                      
+                                                                                           
+   
+      4.4  
+          Но наш пакет должен идти еще дальше рутера и попадать на inetRouter. Он доступен по сети 192.168.255.0/30
+          
+          Прописываем его адрес 192.168.255.1 в таблицу роутинга на хосте CentralRouter
+          
+          
+          ip r add default  via 192.168.255.1 
+          
+           В этом случае  CentralRouter  будет знать,  куда именно ему направлять  пакеты, не описанные в его собственной сети
+           
+           
+           
+           
+      5.  Мы добились того, что  маршрут пакета  office1Server -> office1Router -> centralRouter -> inetRouter
+      
+      
+          будет идти именно таким образом. Однако  попытка выполнить пинг или трейсроут на , допустим,  www.rbc.ru
+           будет оканчиваться неудачей.
+           
+           Чтобы решить эту проблему, необходимо прописать обратные пути в таблице роутинга. Как это сделать?
+                
+        5.1  Пропишем обратный маршрут для пакета, который идет от   192.168.2.130 (office1Server ) до www.rbc.ru
+        
+             Для этого наше внешний  inetRouter  должен знать, куда ему возвращать ответ
+             
+             Делаем на нем такую запись   ip r add 192.168.2.0/24 via 192.168.255.2
+             
+             Это означает, что пакет на сеть 192.168.2.0 должен идти через интерфейс с IP 192.168.255.2 - 
+                
+                это  IP  нашего centralRouter
+                
+                
+         5.2  Однако попадая на centralRouter,  роутер не знает  ,  куда дальше направить пакет для 192.168.2.130
+         
+                 Ему  необходимо указать конкретный путь. Именно это мы и делаем на этом хосте.
+                 
+                 Прописываем        ip r add 192.168.2.0/24 via 192.168.255.10
+                 
+                 Здесь  192.168.255.10 -   это доступный интерфейс роутера  office1Router
+                 
+          
+          5.3   Теперь все становится нормально. 
+          
+          
+                 root@office1Server:~# traceroute 178.248.234.119
+traceroute to 178.248.234.119 (178.248.234.119), 30 hops max, 60 byte packets
+ 1  _gateway (192.168.2.129)  0.743 ms  0.698 ms  0.638 ms
+ 2  192.168.255.9 (192.168.255.9)  0.911 ms  0.758 ms  0.804 ms
+ 3  192.168.255.1 (192.168.255.1)  1.181 ms  0.954 ms  1.015 ms
+ 4  * * *
+ 5  * * *
+ 6  * * *
+ 7  * * *
+ 8  gw-himki.bigtelecom.ru (87.255.9.5)  29.937 ms  26.467 ms  26.399 ms
+ 9  gw-m9.bigtelecom.ru (87.255.9.1)  6.138 ms  6.099 ms  12.601 ms
+10  atlant.naukanet.ru (77.94.165.73)  6.699 ms  8.766 ms  14.054 ms
+11  mskn17ra.transtelecom.net (188.43.10.242)  13.072 ms  12.987 ms  18.698 ms
+12  HLL-gw.transtelecom.net (188.43.15.237)  5.865 ms  5.765 ms  5.717 ms
+
+          
+                  
+                 
+                 
+                 
+         
+          
+          
+          
+      
+           
+           
+ 
+ 
+                                          
