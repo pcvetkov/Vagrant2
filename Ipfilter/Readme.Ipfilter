@@ -1,0 +1,198 @@
+
+1. Port knocking.
+
+ Сделал двумя способами - как нашел в материалах.
+  
+  
+  Первый способ
+ 
+ Этот способ работающий, но он для меня показался не очень прозрачным. В целом понять можно, но 
+ он не сильно наглядный. Но его я проверил.
+
+[root@inetRouter iptables]# vi iptables.rules
+[root@inetRouter iptables]# iptables-restore  < iptables.rules 
+[root@inetRouter iptables]# iptables -S
+-P INPUT DROP
+-P FORWARD DROP
+-P OUTPUT ACCEPT
+-N SSH-INPUT
+-N SSH-INPUTTWO
+-N TRAFFIC
+-A INPUT -j TRAFFIC
+-A SSH-INPUT -m recent --set --name SSH1 --mask 255.255.255.255 --rsource -j DROP
+-A SSH-INPUTTWO -m recent --set --name SSH2 --mask 255.255.255.255 --rsource -j DROP
+-A TRAFFIC -p icmp -m icmp --icmp-type any -j ACCEPT
+-A TRAFFIC -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A TRAFFIC -p tcp -m state --state NEW -m tcp --dport 22 -m recent --rcheck --seconds 30 --name SSH2 --mask 255.255.255.255 --rsource -j ACCEPT
+-A TRAFFIC -p tcp -m state --state NEW -m tcp -m recent --remove --name SSH2 --mask 255.255.255.255 --rsource -j DROP
+-A TRAFFIC -p tcp -m state --state NEW -m tcp --dport 9992 -m recent --rcheck --name SSH1 --mask 255.255.255.255 --rsource -j SSH-INPUTTWO
+-A TRAFFIC -p tcp -m state --state NEW -m tcp -m recent --remove --name SSH1 --mask 255.255.255.255 --rsource -j DROP
+-A TRAFFIC -p tcp -m state --state NEW -m tcp --dport 7778 -m recent --rcheck --name SSH0 --mask 255.255.255.255 --rsource -j SSH-INPUT
+-A TRAFFIC -p tcp -m state --state NEW -m tcp -m recent --remove --name SSH0 --mask 255.255.255.255 --rsource -j DROP
+-A TRAFFIC -p tcp -m state --state NEW -m tcp --dport 8882 -m recent --set --name SSH0 --mask 255.255.255.255 --rsource -j DROP
+-A TRAFFIC -j DROP
+
+
+
+
+[root@inetRouter iptables]# iptables -nvL --line-numbers
+Chain INPUT (policy DROP 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1      407 23688 TRAFFIC    all  --  *      *       0.0.0.0/0            0.0.0.0/0           
+
+Chain FORWARD (policy DROP 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+
+Chain OUTPUT (policy ACCEPT 222 packets, 18392 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+
+Chain SSH-INPUT (1 references)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 DROP       all  --  *      *       0.0.0.0/0            0.0.0.0/0            recent: SET name: SSH1 side: source mask: 255.255.255.255
+
+Chain SSH-INPUTTWO (1 references)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 DROP       all  --  *      *       0.0.0.0/0            0.0.0.0/0            recent: SET name: SSH2 side: source mask: 255.255.255.255
+
+Chain TRAFFIC (1 references)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 ACCEPT     icmp --  *      *       0.0.0.0/0            0.0.0.0/0            icmptype 255
+2      405 23532 ACCEPT     all  --  *      *       0.0.0.0/0            0.0.0.0/0            state RELATED,ESTABLISHED
+3        0     0 ACCEPT     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            state NEW tcp dpt:22 recent: CHECK seconds: 30 name: SSH2 side: source mask: 255.255.255.255
+4        0     0 DROP       tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            state NEW tcp recent: REMOVE name: SSH2 side: source mask: 255.255.255.255
+5        0     0 SSH-INPUTTWO  tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            state NEW tcp dpt:9992 recent: CHECK name: SSH1 side: source mask: 255.255.255.255
+6        0     0 DROP       tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            state NEW tcp recent: REMOVE name: SSH1 side: source mask: 255.255.255.255
+7        0     0 SSH-INPUT  tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            state NEW tcp dpt:7778 recent: CHECK name: SSH0 side: source mask: 255.255.255.255
+8        0     0 DROP       tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            state NEW tcp recent: REMOVE name: SSH0 side: source mask: 255.255.255.255
+9        0     0 DROP       tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            state NEW tcp dpt:8882 recent: SET name: SSH0 side: source mask: 255.255.255.255
+10       2   156 DROP       all  --  *      *       0.0.0.0/0            0.0.0.0/0      
+
+
+
+
+
+2 Способ. Более наглядный 
+ 
+ Создал на  inetRouter  такой скрипт
+ 
+ 
+ 
+iptables -N ssh_knock
+# Создаем цепочку для проверки попыток соединений на защищаемый порт
+# Если за последние 60 секунд было 2 и более стука — блокируем, на всякий случай
+iptables -A ssh_knock -m recent --rcheck --seconds 60 --hitcount 2 -j RETURN
+# Если за последние 10 секунд стук в нужный порт был — разрешить соединение
+iptables -A ssh_knock -m recent --rcheck --seconds 10 -j ACCEPT
+iptables -F INPUT # Очищаем цепочку INPUT
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+# Разрешаем пакеты по установленным соединениям
+# Все попытки открыть новое соединение по SSH направляем на проверку
+iptables -A INPUT -m conntrack --ctstate NEW -p tcp --dport 22 -j ssh_knock
+# Здесь мы добавляем правило для регистрации стука
+iptables -A INPUT -m conntrack --ctstate NEW -p tcp --dport 27520 -m recent --set
+# Опять же на всякий случай — при стуке в соседние порты закрываем SSH
+iptables -A INPUT -m conntrack --ctstate NEW -p tcp -m multiport --dport 27519,27521 -m recent --remove
+iptables -P INPUT DROP 
+# Что не разрешено — то запрещено
+
+
+[root@inetRouter iptables]# iptables -S
+-P INPUT DROP
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-N ssh_knock
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -p tcp -m conntrack --ctstate NEW -m tcp --dport 22 -j ssh_knock
+-A INPUT -p tcp -m conntrack --ctstate NEW -m tcp --dport 27520 -m recent --set --name DEFAULT --mask 255.255.255.255 --rsource
+-A INPUT -p tcp -m conntrack --ctstate NEW -m multiport --dports 27519,27521 -m recent --remove --name DEFAULT --mask 255.255.255.255 --rsource
+-A ssh_knock -m recent --rcheck --seconds 60 --hitcount 2 --name DEFAULT --mask 255.255.255.255 --rsource -j RETURN
+-A ssh_knock -m recent --rcheck --seconds 10 --name DEFAULT --mask 255.255.255.255 --rsource -j ACCEPT
+
+На клиенте сначала проверяем доступ по  ssh -  он закрыт
+
+Затем делаем на клиенте 
+
+./knock 192.168.50.100 27520
+
+192.168.50.100 - адрес  inetRouter
+
+где скрипт knock  имеет вид
+
+
+<pre>root@ubun:~/scripts# cat /root/scripts/knock 
+#!/bin/bash
+HOST=$1
+shift
+for ARG in "$@"
+do
+        nmap -Pn --host-timeout 100 --max-retries 0 -p $ARG $HOST
+done
+
+
+
+ И  ssh становится доступным
+ 
+ Аналогично на  centralRouter
+ 
+ root@centralRouter ~]# ssh 192.168.50.100
+^C
+[root@centralRouter ~]# nmap^C
+[root@centralRouter ~]# chmod u+x knock 
+[root@centralRouter ~]# ./knock 192.168.50.100 27520
+
+Starting Nmap 6.40 ( http://nmap.org ) at 2023-06-03 15:23 UTC
+Warning: 192.168.50.100 giving up on port because retransmission cap hit (0).
+Nmap scan report for 192.168.50.100
+Host is up (0.00041s latency).
+PORT      STATE    SERVICE
+27520/tcp filtered unknown
+MAC Address: 08:00:27:2E:6F:17 (Cadmus Computer Systems)
+
+Nmap done: 1 IP address (1 host up) scanned in 0.36 seconds
+[root@centralRouter ~]# ssh 192.168.50.100
+The authenticity of host '192.168.50.100 (192.168.50.100)' can't be established.
+ECDSA key fingerprint is SHA256:jBNKYWO1nMcWUTNGJ6iSp3RDX3M3OFIoE1cIC9v0HZY.
+ECDSA key fingerprint is MD5:83:35:82:64:8e:88:bf:32:32:6c:0c:10:d5:fa:38:b2.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '192.168.50.100' (ECDSA) to the list of known hosts.
+root@192.168.50.100's password:
+ 
+ 
+
+3.  Подмена  IP  и  port.
+
+Дано
+
+Хост  CentralServer .  Он имеет IP 192.168.50.120.
+
+На нем я поднял апач на порте 80.   Скрин во вложении.
+
+Второй хост -  inetRouter2.
+
+ На нем я поднял  nginx  на порту 8080.  Он имеет адрес 192.168.50.130
+
+Это все гостевые хосты.
+
+На основном хосте ( ubun)  я сделал редирект  такой командой :
+
+iptables -t nat -A OUTPUT -m addrtype  --src-type LOCAL --dst 192.168.50.120 -p tcp --dport 80 -j  DNAT  --to-destination 192.168.50.130:8080
+После этого при  заходе на по  http://192.168.50.120  вместо страницы апач выдается страница  nginx
+
+Во вложении фотографии конгфигураций
+Сначала показаны исходные конфигурации с  nginx  и  apache -  потом результат подмены адресов и портов -  nginx-redirect
+
+ Результирующее правило ниже
+
+root@ubun:~# iptables -t nat -v -L -n --line-number
+Chain PREROUTING (policy ACCEPT 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        2   180 DOCKER     all  --  *      *       0.0.0.0/0            0.0.0.0/0            ADDRTYPE match dst-type LOCAL
+
+Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+
+Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 DOCKER     all  --  *      *       0.0.0.0/0           !127.0.0.0/8          ADDRTYPE match dst-type LOCAL
+2        2   120 DNAT       tcp  --  *      *       0.0.0.0/0            192.168.50.120       ADDRTYPE match src-type LOCAL tcp dpt:80 to:192.168.50.130:8080
+

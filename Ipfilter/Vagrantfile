@@ -1,0 +1,92 @@
+# -*- mode: ruby -*-
+# vim: set ft=ruby :
+# -*- mode: ruby -*-
+# vim: set ft=ruby :
+
+MACHINES = {
+:inetRouter => {
+        :box_name => "centos/7",
+        #:public => {:ip => '10.10.10.1', :adapter => 1},
+        :net => [
+                   {ip: '192.168.255.1', adapter: 2, netmask: "255.255.255.0", virtualbox__intnet: "router-net"},
+                   {ip: '192.168.50.100', adapter: 3},
+
+                ]
+  },
+
+:centralRouter => {
+        :box_name => "centos/7",
+        :net => [
+                   {ip: '192.168.255.2', adapter: 2, netmask: "255.255.255.255", virtualbox__intnet: "router-net"},
+                   {ip: '192.168.50.110', adapter: 3},
+
+                ]
+  },
+
+  
+  
+ :centralServer => {
+        :box_name => "centos/7",
+        :vm_name => "centralServer",
+        :net => [
+                  {ip: '10.10.10.5', adapter: 2},
+                   {ip: '192.168.50.120', adapter: 3},
+                ]
+  },
+
+
+
+ :inetRouter2 => {
+    :box_name => "debian/bullseye64",
+    :vm_name => "inetRouter2",
+    :net => [
+               {ip: '10.10.10.2', adapter: 2 },
+               {ip: '192.168.50.130', adapter: 3},
+            ]
+  } 
+
+  
+}
+
+Vagrant.configure("2") do |config|
+
+  MACHINES.each do |boxname, boxconfig|
+
+    config.vm.define boxname do |box|
+
+        box.vm.box = boxconfig[:box_name]
+        box.vm.host_name = boxname.to_s
+
+        boxconfig[:net].each do |ipconf|
+          box.vm.network "private_network", ipconf
+        end
+        
+        if boxconfig.key?(:public)
+          box.vm.network "public_network", boxconfig[:public]
+        end
+
+        box.vm.provision "shell", inline: <<-SHELL
+          mkdir -p ~root/.ssh
+                cp ~vagrant/.ssh/auth* ~root/.ssh
+        SHELL
+        
+        case boxname.to_s
+        when "inetRouter"
+          box.vm.provision "shell", run: "always", inline: <<-SHELL
+            sysctl net.ipv4.conf.all.forwarding=1
+            iptables -t nat -A POSTROUTING ! -d 192.168.0.0/16 -o eth0 -j MASQUERADE
+            SHELL
+        when "centralRouter"
+          box.vm.provision "shell", run: "always", inline: <<-SHELL
+            sysctl net.ipv4.conf.all.forwarding=1
+            echo "DEFROUTE=no" >> /etc/sysconfig/network-scripts/ifcfg-eth0 
+            echo "GATEWAY=192.168.255.1" >> /etc/sysconfig/network-scripts/ifcfg-eth1
+            systemctl restart network
+            SHELL
+
+      end
+
+  end
+  
+ end 
+end
