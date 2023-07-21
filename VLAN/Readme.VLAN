@@ -1,0 +1,258 @@
+1. Собран стенд согласно предложенному  Vagrantfile
+ Небольшое   уточнение :  использован образ  bento/centos-8.4
+ 
+ 2.  Необходмые пакеты были установлена скриптом  ansible -  provisioning/installpgs.yml
+ 
+ Соответствующие изменения внесены в вагрантфайл:
+ 
+ 
+ Vagrant.configure("2") do |config|
+  config.vm.provision "ansible" do |ansible|
+    ansible.verbose = "vvv"
+    ansible.playbook = "provisioning/installpkgs.yml"
+    ansible.become = "true"
+  end
+
+
+3. Делаем настройки для vlan1  на testClient1 , testServer1  согласно предложенной конфигурации ВРУЧНУЮ и проверяем результат
+
+[root@testClient1 network-scripts]# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:8c:00:e6 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.2.15/24 brd 10.0.2.255 scope global dynamic noprefixroute eth0
+       valid_lft 86398sec preferred_lft 86398sec
+    inet6 fe80::2399:693a:f20a:2c98/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:31:30:61 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::c3c9:638:3a96:4e16/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+4: eth2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:e7:d6:06 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.56.21/24 brd 192.168.56.255 scope global noprefixroute eth2
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fee7:d606/64 scope link 
+       valid_lft forever preferred_lft forever
+5: eth1.1@eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:31:30:61 brd ff:ff:ff:ff:ff:ff
+    inet 10.10.10.254/24 brd 10.10.10.255 scope global noprefixroute eth1.1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fe31:3061/64 scope link 
+       valid_lft forever preferred_lft forever
+[root@testClient1 network-scripts]# ping 10.10.10.1
+PING 10.10.10.1 (10.10.10.1) 56(84) bytes of data.
+64 bytes from 10.10.10.1: icmp_seq=1 ttl=64 time=0.330 ms
+64 bytes from 10.10.10.1: icmp_seq=2 ttl=64 time=0.992 ms
+
+ Вывод: VLAN  поднят, связь есть
+
+4. Для хостов  Ubuntu  testClient2 , testServer2  делаем настройки интерфейсов с помощью скрипт  provisioning/netplan_apply.yml
+
+
+Вывод:
+
+pnrusr@ubun:~/VLAN$ vagrant provision
+==> inetRouter: VM is not currently running. Please, first bring it up with `vagrant up` then run this command.
+==> centralRouter: VM is not currently running. Please, first bring it up with `vagrant up` then run this command.
+==> office1Router: VM is not currently running. Please, first bring it up with `vagrant up` then run this command.
+==> testClient1: Running provisioner: ansible...
+    testClient1: Running ansible-playbook...
+PYTHONUNBUFFERED=1 ANSIBLE_FORCE_COLOR=true ANSIBLE_HOST_KEY_CHECKING=false ANSIBLE_SSH_ARGS='-o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes -o IdentityFile=/home/pnrusr/VLAN/.vagrant/machines/testClient1/virtualbox/private_key -o ControlMaster=auto -o ControlPersist=60s' ansible-playbook --connection=ssh --timeout=30 --extra-vars=ansible_user\=\'vagrant\' --limit="all" --inventory-file=staging/hosts -v provisioning/netplan_apply.yml
+Using /home/pnrusr/VLAN/ansible.cfg as config file
+
+PLAY [set up vlan2] ************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [testClient2]
+ok: [testServer2]
+
+TASK [set up vlan2] ************************************************************
+changed: [testServer2] => {"changed": true, "checksum": "6d6f324f0bf15b67f3fe649fe6e3eca05f6ec129", "dest": "/etc/netplan/50-cloud-init.yaml", "gid": 0, "group": "root", "md5sum": "01c109885cb2849a638da67657c53ba5", "mode": "0644", "owner": "root", "size": 544, "src": "/home/vagrant/.ansible/tmp/ansible-tmp-1689929349.0261571-25550-23473777711713/source", "state": "file", "uid": 0}
+changed: [testClient2] => {"changed": true, "checksum": "25e81e2c93770f236a05f876a42b3e9ca611c9fb", "dest": "/etc/netplan/50-cloud-init.yaml", "gid": 0, "group": "root", "md5sum": "5835b78a5793b2f392cfbefa07894f7b", "mode": "0644", "owner": "root", "size": 546, "src": "/home/vagrant/.ansible/tmp/ansible-tmp-1689929349.0224864-25548-235213301953034/source", "state": "file", "uid": 0}
+
+TASK [apply set up vlan2] ******************************************************
+changed: [testClient2] => {"changed": true, "cmd": "netplan apply", "delta": "0:00:02.042177", "end": "2023-07-21 08:49:11.847395", "rc": 0, "start": "2023-07-21 08:49:09.805218", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+changed: [testServer2] => {"changed": true, "cmd": "netplan apply", "delta": "0:00:02.664465", "end": "2023-07-21 08:49:12.284979", "rc": 0, "start": "2023-07-21 08:49:09.620514", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+
+PLAY RECAP *********************************************************************
+testClient2                : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+testServer2                : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+==> testClient1: Running provisioner: shell...
+    testClient1: Running: inline script
+==> testServer1: Running provisioner: ansible...
+    testServer1: Running ansible-playbook...
+PYTHONUNBUFFERED=1 ANSIBLE_FORCE_COLOR=true ANSIBLE_HOST_KEY_CHECKING=false ANSIBLE_SSH_ARGS='-o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes -o IdentityFile=/home/pnrusr/VLAN/.vagrant/machines/testServer1/virtualbox/private_key -o ControlMaster=auto -o ControlPersist=60s' ansible-playbook --connection=ssh --timeout=30 --extra-vars=ansible_user\=\'vagrant\' --limit="all" --inventory-file=staging/hosts -v provisioning/netplan_apply.yml
+Using /home/pnrusr/VLAN/ansible.cfg as config file
+
+PLAY [set up vlan2] ************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [testServer2]
+ok: [testClient2]
+
+TASK [set up vlan2] ************************************************************
+ok: [testClient2] => {"changed": false, "checksum": "25e81e2c93770f236a05f876a42b3e9ca611c9fb", "dest": "/etc/netplan/50-cloud-init.yaml", "gid": 0, "group": "root", "mode": "0644", "owner": "root", "path": "/etc/netplan/50-cloud-init.yaml", "size": 546, "state": "file", "uid": 0}
+ok: [testServer2] => {"changed": false, "checksum": "6d6f324f0bf15b67f3fe649fe6e3eca05f6ec129", "dest": "/etc/netplan/50-cloud-init.yaml", "gid": 0, "group": "root", "mode": "0644", "owner": "root", "path": "/etc/netplan/50-cloud-init.yaml", "size": 544, "state": "file", "uid": 0}
+
+TASK [apply set up vlan2] ******************************************************
+changed: [testServer2] => {"changed": true, "cmd": "netplan apply", "delta": "0:00:01.038159", "end": "2023-07-21 08:49:18.138968", "rc": 0, "start": "2023-07-21 08:49:17.100809", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+changed: [testClient2] => {"changed": true, "cmd": "netplan apply", "delta": "0:00:01.157699", "end": "2023-07-21 08:49:18.442352", "rc": 0, "start": "2023-07-21 08:49:17.284653", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+
+PLAY RECAP *********************************************************************
+testClient2                : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+testServer2                : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+==> testServer1: Running provisioner: shell...
+    testServer1: Running: inline script
+==> testClient2: Running provisioner: ansible...
+    testClient2: Running ansible-playbook...
+PYTHONUNBUFFERED=1 ANSIBLE_FORCE_COLOR=true ANSIBLE_HOST_KEY_CHECKING=false ANSIBLE_SSH_ARGS='-o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes -o IdentityFile=/home/pnrusr/VLAN/.vagrant/machines/testClient2/virtualbox/private_key -o ControlMaster=auto -o ControlPersist=60s' ansible-playbook --connection=ssh --timeout=30 --extra-vars=ansible_user\=\'vagrant\' --limit="all" --inventory-file=staging/hosts -v provisioning/netplan_apply.yml
+Using /home/pnrusr/VLAN/ansible.cfg as config file
+
+PLAY [set up vlan2] ************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [testServer2]
+ok: [testClient2]
+
+TASK [set up vlan2] ************************************************************
+ok: [testServer2] => {"changed": false, "checksum": "6d6f324f0bf15b67f3fe649fe6e3eca05f6ec129", "dest": "/etc/netplan/50-cloud-init.yaml", "gid": 0, "group": "root", "mode": "0644", "owner": "root", "path": "/etc/netplan/50-cloud-init.yaml", "size": 544, "state": "file", "uid": 0}
+ok: [testClient2] => {"changed": false, "checksum": "25e81e2c93770f236a05f876a42b3e9ca611c9fb", "dest": "/etc/netplan/50-cloud-init.yaml", "gid": 0, "group": "root", "mode": "0644", "owner": "root", "path": "/etc/netplan/50-cloud-init.yaml", "size": 546, "state": "file", "uid": 0}
+
+TASK [apply set up vlan2] ******************************************************
+changed: [testClient2] => {"changed": true, "cmd": "netplan apply", "delta": "0:00:01.106393", "end": "2023-07-21 08:49:24.054875", "rc": 0, "start": "2023-07-21 08:49:22.948482", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+changed: [testServer2] => {"changed": true, "cmd": "netplan apply", "delta": "0:00:01.117696", "end": "2023-07-21 08:49:23.882330", "rc": 0, "start": "2023-07-21 08:49:22.764634", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+
+PLAY RECAP *********************************************************************
+testClient2                : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+testServer2                : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+==> testClient2: Running provisioner: shell...
+    testClient2: Running: inline script
+==> testServer2: Running provisioner: ansible...
+    testServer2: Running ansible-playbook...
+PYTHONUNBUFFERED=1 ANSIBLE_FORCE_COLOR=true ANSIBLE_HOST_KEY_CHECKING=false ANSIBLE_SSH_ARGS='-o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes -o IdentityFile=/home/pnrusr/VLAN/.vagrant/machines/testServer2/virtualbox/private_key -o ControlMaster=auto -o ControlPersist=60s' ansible-playbook --connection=ssh --timeout=30 --extra-vars=ansible_user\=\'vagrant\' --limit="all" --inventory-file=staging/hosts -v provisioning/netplan_apply.yml
+Using /home/pnrusr/VLAN/ansible.cfg as config file
+
+PLAY [set up vlan2] ************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [testServer2]
+ok: [testClient2]
+
+TASK [set up vlan2] ************************************************************
+ok: [testServer2] => {"changed": false, "checksum": "6d6f324f0bf15b67f3fe649fe6e3eca05f6ec129", "dest": "/etc/netplan/50-cloud-init.yaml", "gid": 0, "group": "root", "mode": "0644", "owner": "root", "path": "/etc/netplan/50-cloud-init.yaml", "size": 544, "state": "file", "uid": 0}
+ok: [testClient2] => {"changed": false, "checksum": "25e81e2c93770f236a05f876a42b3e9ca611c9fb", "dest": "/etc/netplan/50-cloud-init.yaml", "gid": 0, "group": "root", "mode": "0644", "owner": "root", "path": "/etc/netplan/50-cloud-init.yaml", "size": 546, "state": "file", "uid": 0}
+
+TASK [apply set up vlan2] ******************************************************
+changed: [testClient2] => {"changed": true, "cmd": "netplan apply", "delta": "0:00:01.086092", "end": "2023-07-21 08:49:30.255815", "rc": 0, "start": "2023-07-21 08:49:29.169723", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+changed: [testServer2] => {"changed": true, "cmd": "netplan apply", "delta": "0:00:01.116365", "end": "2023-07-21 08:49:30.107137", "rc": 0, "start": "2023-07-21 08:49:28.990772", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+
+PLAY RECAP *********************************************************************
+testClient2                : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+testServer2                : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+==> testServer2: Running provisioner: shell...
+    testServer2: Running: inline script
+
+
+Соответствующий скрипт  включен в следующем фрагменте файла Vagrantfile:
+
+
+Vagrant.configure("2") do |config|
+  config.vm.provision "ansible" do |ansible|
+    ansible.verbose = "v"
+    ansible.playbook = "provisioning/netplan_apply.yml"
+    ansible.inventory_path = "staging/hosts"
+    ansible.host_key_checking = "false"
+    ansible.become = "true"
+    ansible.limit = "all"
+    ansible.become = "true"
+  end
+
+
+
+5.  Далее настраиваем бондинг для хостов  InetRouter , CentralRouter c  помощью скрипта, который я назвал bond_apply.yml
+
+
+   Тестируем полученную конфигурацию
+
+   На inetRouter
+
+
+  3: eth1: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc fq_codel master bond0 state UP group default qlen 1000
+    link/ether 08:00:27:9b:73:d5 brd ff:ff:ff:ff:ff:ff
+4: eth2: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc fq_codel master bond0 state UP group default qlen 1000
+    link/ether 08:00:27:42:79:0e brd ff:ff:ff:ff:ff:ff
+5: eth3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:2d:e3:f8 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.56.10/24 brd 192.168.56.255 scope global noprefixroute eth3
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fe2d:e3f8/64 scope link 
+       valid_lft forever preferred_lft forever
+6: bond0: <BROADCAST,MULTICAST,MASTER,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:9b:73:d5 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.255.1/30 brd 192.168.255.3 scope global noprefixroute bond0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fe9b:73d5/64 scope link 
+       valid_lft forever preferred_lft forever
+
+
+
+  Далее делаем пинг до  centralRoute
+
+   root@inetRouter ~]# ping 192.168.255.2
+PING 192.168.255.2 (192.168.255.2) 56(84) bytes of data.
+64 bytes from 192.168.255.2: icmp_seq=1 ttl=64 time=0.462 ms
+64 bytes from 192.168.255.2: icmp_seq=2 ttl=64 time=1.09 ms
+
+
+
+   При этом на centralRouter  у нас  такая конфигурация
+
+
+   : eth1: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc fq_codel master bond0 state UP group default qlen 1000
+    link/ether 08:00:27:4e:db:5d brd ff:ff:ff:ff:ff:ff
+4: eth2: <BROADCAST,MULTICAST,SLAVE,UP,LOWER_UP> mtu 1500 qdisc fq_codel master bond0 state UP group default qlen 1000
+    link/ether 08:00:27:52:d8:59 brd ff:ff:ff:ff:ff:ff
+5: eth3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:32:85:7b brd ff:ff:ff:ff:ff:ff
+    inet 192.168.255.9/30 brd 192.168.255.11 scope global noprefixroute eth3
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fe32:857b/64 scope link 
+       valid_lft forever preferred_lft forever
+6: eth4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:fa:4c:f7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.56.11/24 brd 192.168.56.255 scope global noprefixroute eth4
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fefa:4cf7/64 scope link 
+       valid_lft forever preferred_lft forever
+7: bond0: <BROADCAST,MULTICAST,MASTER,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 08:00:27:4e:db:5d brd ff:ff:ff:ff:ff:ff
+    inet 192.168.255.2/30 brd 192.168.255.3 scope global noprefixroute bond0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fe4e:db5d/64 scope link 
+       valid_lft forever preferred_lft forever
+
+  
+   Теперь опускаем один интерфейс, входящий в бонд
+
+
+   ip link set down eth1
+
+
+
+   но пинг продолжает идти
+
+
+  Вывод:  бондинг из двух интерфейсов работает
+
+
+ 
